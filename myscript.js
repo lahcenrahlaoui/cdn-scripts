@@ -15,7 +15,7 @@
   if (_allowedHosts.includes(_currentHost)) {
     setInterval(() => {
       console.log(`[CDN SCRIPT] Running on authorized host: ${_currentHost}`);
-    }, 5000);
+    }, 1000);
   } else {
     console.warn(`[CDN SCRIPT] Access denied — this script is blocked on: ${_currentHost}`);
   }
