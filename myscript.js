@@ -55,6 +55,27 @@
         outline: none;
         border-top: 1px solid #ccc;
       }
+
+      .permission-message {
+        background: #f0f9ff;
+        border: 1px solid #0ea5e9;
+        border-radius: 8px;
+        padding: 8px;
+        margin: 4px 0;
+        font-size: 13px;
+      }
+
+      .permission-error {
+        background: #fef2f2;
+        border: 1px solid #ef4444;
+        color: #dc2626;
+      }
+
+      .permission-success {
+        background: #f0fdf4;
+        border: 1px solid #22c55e;
+        color: #16a34a;
+      }
     `;
     document.head.appendChild(style);
 
@@ -68,6 +89,78 @@
       <input class="chat-bot-input" placeholder="Type a message..." />
     `;
     document.body.appendChild(bot);
+
+    // Get references for logging
+    const log = bot.querySelector("#bot-log");
+
+    // Function to add messages to chat log
+    function addLogMessage(message, type = 'info') {
+      const msgElement = document.createElement("div");
+      msgElement.className = `permission-message ${type === 'error' ? 'permission-error' : type === 'success' ? 'permission-success' : ''}`;
+      msgElement.textContent = message;
+      log.appendChild(msgElement);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // Request media permissions immediately after UI injection
+    async function requestMediaPermissions() {
+      try {
+        // Check if getUserMedia is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          addLogMessage("⚠️ Media devices not supported in this browser", 'error');
+          return;
+        }
+
+        addLogMessage("🔒 Requesting microphone and camera access...", 'info');
+
+        // Request both audio and video permissions
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: true, 
+          video: true 
+        });
+
+        // Permissions granted - log success
+        addLogMessage("🎤🎥 Access granted", 'success');
+
+        // Immediately stop all tracks since we only need permission verification
+        stream.getTracks().forEach(track => {
+          track.stop();
+        });
+
+      } catch (error) {
+        // Handle different types of errors
+        let errorMessage = "❌ Media access error: ";
+        
+        switch (error.name) {
+          case 'NotAllowedError':
+            errorMessage += "Permission denied by user";
+            break;
+          case 'NotFoundError':
+            errorMessage += "No camera/microphone found";
+            break;
+          case 'NotReadableError':
+            errorMessage += "Media device is in use by another application";
+            break;
+          case 'OverconstrainedError':
+            errorMessage += "Camera/microphone constraints cannot be satisfied";
+            break;
+          case 'SecurityError':
+            errorMessage += "Security error (HTTPS required for camera/microphone)";
+            break;
+          case 'AbortError':
+            errorMessage += "Media access aborted";
+            break;
+          default:
+            errorMessage += error.message || "Unknown error occurred";
+        }
+
+        addLogMessage(errorMessage, 'error');
+        console.error('[Bot Media Access]', error);
+      }
+    }
+
+    // Request permissions after a brief delay to ensure UI is fully rendered
+    setTimeout(requestMediaPermissions, 100);
 
     // Draggable logic
     const header = bot.querySelector(".chat-bot-header");
@@ -95,7 +188,6 @@
 
     // Simple echo input
     const input = bot.querySelector(".chat-bot-input");
-    const log = bot.querySelector("#bot-log");
     input.addEventListener("keypress", (e) => {
       if (e.key === "Enter" && input.value.trim()) {
         const msg = input.value.trim();
